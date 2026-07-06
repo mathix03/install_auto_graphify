@@ -2,6 +2,8 @@
 
 One-click PowerShell installer that turns any codebase into an interactive knowledge graph and wires it straight into Claude Code — zero manual steps, zero questions asked.
 
+<img width="3412" height="1916" alt="Capture d&#39;écran 2026-07-06 200744" src="https://github.com/user-attachments/assets/121f2ac6-76fd-4396-a060-339fc08eec53" />
+
 ## What it does
 
 Run the script once and it automatically:
@@ -21,6 +23,8 @@ Drop `install-graphify.ps1` into your project folder, then:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-graphify.ps1
 ```
+
+<img width="2943" height="1946" alt="Capture d&#39;écran 2026-07-06 200628" src="https://github.com/user-attachments/assets/33cbd178-2bec-4d24-978f-66ef3d833c81" />
 
 Or right-click the script → **Run with PowerShell**. To target another folder without moving the script:
 
@@ -42,6 +46,13 @@ your-project/
 ```
 
 The initial map covers your **code** (AST extraction, no LLM, no API cost). Type `/graphify` inside Claude to enrich it with docs, PDFs, images, videos and semantic links.
+
+### The Included Guide
+The installer also generates a comprehensive local guide to help you master Graphify:
+
+<img width="1307" height="1482" alt="Capture d&#39;écran 2026-07-06 200848" src="https://github.com/user-attachments/assets/04a88729-44b6-4417-a045-c436799fd698" />
+<img width="1165" height="1424" alt="Capture d&#39;écran 2026-07-06 200910" src="https://github.com/user-attachments/assets/71ab8560-25e7-4800-b561-33d03e723189" />
+<img width="1202" height="1050" alt="Capture d&#39;écran 2026-07-06 200926" src="https://github.com/user-attachments/assets/3cc102be-1094-4ab0-ae7f-db6289421963" />
 
 ## Requirements
 
