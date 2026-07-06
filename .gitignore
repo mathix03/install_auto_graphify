@@ -4,3 +4,5 @@ graphify-out/
 # Local Claude configuration
 CLAUDE.md
 .claude/
+
+- **Git Ignore:** Remember to add `graphify-out/`, `.claude/`, and `CLAUDE.md` to your project's `.gitignore` file so you don't accidentally commit your local AI knowledge graph.
