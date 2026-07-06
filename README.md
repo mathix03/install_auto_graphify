@@ -18,7 +18,7 @@ Run the script once and it automatically:
 
 ## Quick start
 
-**Method 1: The One-Liner (Recommended)**
+Method 1: The One-Liner (Recommended)**
 Open PowerShell as administrator and run this single command to download and execute the installer:
 
 ```powershell
