@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
     install-graphify.ps1
     Installe graphify (CLI + skill Claude Code) automatiquement sur le PC.
@@ -8,7 +8,9 @@
     - Copie le skill dans ~\.claude\skills\graphify via "graphify install --platform claude"
     - Trouve Claude (app de bureau et/ou CLI) - et installe Claude Code
       automatiquement s'il est absent (installeur officiel, repli npm)
-    - Lie graphify au projet (section CLAUDE.md + hook via "graphify claude install")
+    - Lie graphify au projet pour TROIS assistants IA :
+        Claude Code (CLAUDE.md + hook), Gemini CLI (GEMINI.md + hook BeforeTool)
+        et Google Antigravity (.agents/ : règles + workflows + skill)
     - Construit la carte du graphe (graphify update, sans LLM) et l'ouvre dans le navigateur
     - Génère et ouvre un guide d'utilisation complet (graphify-out\guide-graphify.html)
     - Lance l'application Claude
@@ -188,6 +190,18 @@ try {
 
     if ($claudeApp) { Ok "App de bureau Claude : $claudeApp" }
     if ($claudeCli) { Ok "CLI Claude Code : $($claudeCli.Source)" }
+
+    # Autres assistants IA supportés (informatif - la liaison est posée quoi qu'il en soit)
+    $geminiCli = Get-Command gemini -ErrorAction SilentlyContinue
+    if ($geminiCli) { Ok "Gemini CLI : $($geminiCli.Source)" }
+    else { Warn "Gemini CLI absent (npm install -g @google/gemini-cli) - la liaison sera prête pour plus tard." }
+    $antigravity = Get-Command antigravity -ErrorAction SilentlyContinue
+    if (-not $antigravity) {
+        $agPath = Join-Path $TargetUserProfile 'AppData\Local\Programs\Antigravity\Antigravity.exe'
+        if (Test-Path $agPath) { $antigravity = @{ Source = $agPath } }
+    }
+    if ($antigravity) { Ok "Google Antigravity : $($antigravity.Source)" }
+    else { Warn "Antigravity absent (https://antigravity.google) - la liaison sera prête pour plus tard." }
     if (-not $claudeApp -and -not $claudeCli) {
         Warn "Claude introuvable - installation automatique de Claude Code..."
         try {
@@ -223,8 +237,16 @@ try {
         Push-Location $ProjectPath
         try {
             & $graphifyExe claude install
-            if ($LASTEXITCODE -eq 0) { Ok "Projet lié : CLAUDE.md + hook installés (graphify always-on)" }
+            if ($LASTEXITCODE -eq 0) { Ok "Claude Code lié : CLAUDE.md + hook installés (graphify always-on)" }
             else { Warn "graphify claude install a renvoyé le code $LASTEXITCODE - liaison à refaire avec 'graphify claude install' dans le projet." }
+
+            & $graphifyExe gemini install
+            if ($LASTEXITCODE -eq 0) { Ok "Gemini CLI lié : GEMINI.md + hook BeforeTool installés" }
+            else { Warn "graphify gemini install a renvoyé le code $LASTEXITCODE (non bloquant)." }
+
+            & $graphifyExe antigravity install
+            if ($LASTEXITCODE -eq 0) { Ok "Antigravity lié : .agents\ (règles + workflows + skill) installés" }
+            else { Warn "graphify antigravity install a renvoyé le code $LASTEXITCODE (non bloquant)." }
         } finally {
             Pop-Location
         }
