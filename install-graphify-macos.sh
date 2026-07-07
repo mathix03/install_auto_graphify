@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
 #
-# install-graphify-macos.sh — version macOS
+# install-graphify.sh — version GNU/Linux
 # Installe graphify (CLI + skill Claude Code) automatiquement.
 #   - Demande les droits administrateur (sudo) une seule fois, au début
-#   - Installe Homebrew puis Python 3 si absents
+#   - Installe Python 3 + pip si absents (apt / dnf / pacman / zypper / apk)
 #   - Installe le package pip "graphifyy" (le vrai nom du package graphify sur PyPI)
 #   - Copie le skill dans ~/.claude/skills/graphify via "graphify install --platform claude"
-#   - Trouve Claude (app /Applications/Claude.app et/ou CLI) - et installe
-#     Claude Code automatiquement s'il est absent (installeur officiel, repli npm)
-#   - Lie graphify au projet (CLAUDE.md + hook)
+#   - Trouve Claude (CLI) - et installe Claude Code automatiquement s'il est
+#     absent (installeur officiel, repli npm)
+#   - Lie graphify au projet pour TROIS assistants IA :
+#     Claude Code (CLAUDE.md + hook), Gemini CLI (GEMINI.md + hook BeforeTool)
+#     et Google Antigravity (.agents/ : règles + workflows + skill)
 #   - Construit la carte du graphe (sans LLM) et l'ouvre dans le navigateur
 #   - Génère et ouvre un guide d'utilisation complet (graphify-out/guide-graphify.html)
-#   - Lance l'app Claude (ou le CLI dans un nouveau Terminal)
+#   - Lance Claude Code dans un nouveau terminal
 #
 # Tout est automatique : aucune question posée (sauf le mot de passe sudo).
 # Le projet cartographié est le dossier où se trouve le script, sauf si un
 # chemin est donné en argument :
-#     ./install-graphify-macos.sh [/chemin/vers/projet]
+#     ./install-graphify.sh [/chemin/vers/projet]
 #
 set -uo pipefail
 
@@ -30,12 +32,12 @@ warn() { echo -e "    ${YELLOW}[!]${NC} $*"; }
 fail() { echo -e "\n${RED}[ERREUR]${NC} $*"; exit 1; }
 
 # ============================================================================
-# 1. Si lancé avec "sudo ./install-graphify-macos.sh", on redescend vers
-#    l'utilisateur réel : Homebrew, pip, le skill et le navigateur doivent
-#    s'installer dans SON profil, pas dans celui de root.
+# 1. Si lancé avec "sudo ./install-graphify.sh", on redescend vers l'utilisateur
+#    réel : pip, le skill et le navigateur doivent s'installer dans SON profil,
+#    pas dans celui de root. Les paquets système repasseront par sudo.
 # ============================================================================
 if [[ $EUID -eq 0 && -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
-    echo "Relance en tant que $SUDO_USER..."
+    echo "Relance en tant que $SUDO_USER (les paquets système utiliseront sudo)..."
     exec sudo -u "$SUDO_USER" -H bash "$0" "$@"
 fi
 
@@ -54,34 +56,34 @@ echo "Projet      : $PROJECT_PATH"
 
 # ============================================================================
 # 3. Droits administrateur : un seul mot de passe, mis en cache pour la suite
-#    (utilisé par l'installeur Homebrew si besoin ; refus non bloquant)
 # ============================================================================
+SUDO=""
 if [[ $EUID -ne 0 ]]; then
-    step "Droits administrateur (sudo)"
-    if sudo -v; then
+    if command -v sudo >/dev/null 2>&1; then
+        step "Droits administrateur (sudo)"
+        sudo -v || fail "Droits administrateur refusés."
+        SUDO="sudo"
         ok "Droits administrateur obtenus"
     else
-        warn "sudo refusé - l'installation de Homebrew pourrait échouer, le reste fonctionnera."
+        warn "sudo indisponible - les paquets système ne pourront pas être installés."
     fi
 fi
 
-# Homebrew (Apple Silicon : /opt/homebrew, Intel : /usr/local) + pip user bin
-export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
+# Détection du gestionnaire de paquets
+PKG_INSTALL=""
+if   command -v apt-get >/dev/null 2>&1; then PKG_INSTALL="$SUDO apt-get install -y"; $SUDO apt-get update -qq || true
+elif command -v dnf     >/dev/null 2>&1; then PKG_INSTALL="$SUDO dnf install -y"
+elif command -v yum     >/dev/null 2>&1; then PKG_INSTALL="$SUDO yum install -y"
+elif command -v pacman  >/dev/null 2>&1; then PKG_INSTALL="$SUDO pacman -Sy --noconfirm"
+elif command -v zypper  >/dev/null 2>&1; then PKG_INSTALL="$SUDO zypper install -y"
+elif command -v apk     >/dev/null 2>&1; then PKG_INSTALL="$SUDO apk add"
+fi
+
+# ~/.local/bin doit être dans le PATH (pip --user et installeur natif de Claude)
+export PATH="$HOME/.local/bin:$PATH"
 
 # ============================================================================
-# 4. Homebrew (installé seulement si nécessaire pour Python)
-# ============================================================================
-ensure_brew() {
-    command -v brew >/dev/null 2>&1 && return 0
-    warn "Homebrew introuvable - installation en cours..."
-    NONINTERACTIVE=1 /bin/bash -c \
-        "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || return 1
-    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-    command -v brew >/dev/null 2>&1
-}
-
-# ============================================================================
-# 5. Python 3.9+
+# 4. Python 3.9+
 # ============================================================================
 step "Vérification de Python 3.9+"
 have_python() {
@@ -89,27 +91,36 @@ have_python() {
     python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3,9) else 1)' 2>/dev/null
 }
 if ! have_python; then
-    warn "Python 3.9+ introuvable - installation via Homebrew..."
-    ensure_brew || fail "Homebrew indisponible. Installez Python 3.9+ manuellement (https://www.python.org)."
-    brew install python || fail "brew install python a échoué."
+    warn "Python 3.9+ introuvable - installation en cours..."
+    [[ -n "$PKG_INSTALL" ]] || fail "Aucun gestionnaire de paquets reconnu. Installez Python 3.9+ manuellement."
+    if command -v apt-get >/dev/null 2>&1; then
+        $PKG_INSTALL python3 python3-pip python3-venv
+    elif command -v pacman >/dev/null 2>&1; then
+        $PKG_INSTALL python python-pip
+    elif command -v apk >/dev/null 2>&1; then
+        $PKG_INSTALL python3 py3-pip
+    else
+        $PKG_INSTALL python3 python3-pip
+    fi
     have_python || fail "Python installé mais toujours introuvable. Rouvrez un terminal puis relancez."
 fi
 ok "Python : $(command -v python3) ($(python3 --version 2>&1))"
 
 # pip présent ?
-python3 -m pip --version >/dev/null 2>&1 || python3 -m ensurepip --user >/dev/null 2>&1 || true
-python3 -m pip --version >/dev/null 2>&1 || fail "pip indisponible pour ce Python."
+if ! python3 -m pip --version >/dev/null 2>&1; then
+    warn "pip absent - installation..."
+    if command -v apt-get >/dev/null 2>&1; then $PKG_INSTALL python3-pip
+    elif command -v pacman >/dev/null 2>&1; then $PKG_INSTALL python-pip
+    elif command -v apk >/dev/null 2>&1; then $PKG_INSTALL py3-pip
+    elif [[ -n "$PKG_INSTALL" ]]; then $PKG_INSTALL python3-pip
+    fi
+    python3 -m pip --version >/dev/null 2>&1 || fail "Impossible d'installer pip."
+fi
 
 # ============================================================================
-# 6. Package pip "graphifyy" (nom officiel du package graphify sur PyPI)
-#    Échelle de replis :
-#      1. pipx s'il est présent
-#      2. pip --user avec le python3 courant (erreurs affichées)
-#      3. repli PEP 668 (--break-system-packages) si ce pip connaît l'option
-#      4. dernier recours : Python récent via Homebrew + venv dédié
-#         (~/.graphify/venv) + binaire lié dans ~/.local/bin
-#    Le vieux Python 3.9 d'Apple (pip 21) échoue souvent aux étapes 2-3 :
-#    l'étape 4 le contourne systématiquement.
+# 5. Package pip "graphifyy" (nom officiel du package graphify sur PyPI)
+#    pipx si disponible, sinon pip --user (avec repli PEP 668 pour les
+#    distros à environnement Python "externally managed" : Debian 12+, Ubuntu 23.04+)
 # ============================================================================
 step "Installation du package pip 'graphifyy'"
 INSTALLED=""
@@ -146,14 +157,12 @@ if [[ -z "$INSTALLED" ]]; then
 fi
 
 if [[ -z "$INSTALLED" ]]; then
-    warn "pip a échoué avec le Python du système (cause fréquente : Python Apple 3.9 trop ancien)."
-    warn "Dernier recours : Python récent via Homebrew + environnement virtuel dédié..."
-    ensure_brew || fail "Homebrew indisponible - impossible d'installer un Python récent. Envoyez le message d'erreur pip ci-dessus."
-    brew install python || true
-    BREW_PY="$(brew --prefix 2>/dev/null)/bin/python3"
-    [[ -x "$BREW_PY" ]] || BREW_PY="$(command -v python3)"
+    # Dernier recours : environnement virtuel dédié (contourne PEP 668 et
+    # les pip trop anciens qui ignorent --break-system-packages)
+    warn "pip --user a échoué - dernier recours : environnement virtuel dédié..."
+    if command -v apt-get >/dev/null 2>&1; then $PKG_INSTALL python3-venv || true; fi
     VENV="$HOME/.graphify/venv"
-    "$BREW_PY" -m venv "$VENV" || fail "Création de l'environnement virtuel impossible."
+    python3 -m venv "$VENV" || fail "Création de l'environnement virtuel impossible. Envoyez le message d'erreur pip ci-dessus."
     "$VENV/bin/pip" install --upgrade pip graphifyy \
         || fail "pip install graphifyy a échoué même dans un venv - envoyez le message d'erreur ci-dessus."
     mkdir -p "$HOME/.local/bin"
@@ -162,19 +171,13 @@ if [[ -z "$INSTALLED" ]]; then
     ok "Installé dans $VENV (binaire lié dans ~/.local/bin)"
 fi
 
-# Sur macOS, pip --user installe les binaires dans ~/Library/Python/3.x/bin
-USER_BIN="$(python3 -m site --user-base 2>/dev/null)/bin"
-[[ -d "$USER_BIN" ]] && export PATH="$USER_BIN:$PATH"
-
 GRAPHIFY="$(command -v graphify || true)"
-[[ -n "$GRAPHIFY" ]] || fail "graphify introuvable dans le PATH après installation (vérifiez $USER_BIN)."
-VERSION="$(python3 -c 'import importlib.metadata as m; print(m.version("graphifyy"))' 2>/dev/null \
-        || "$HOME/.graphify/venv/bin/python" -c 'import importlib.metadata as m; print(m.version("graphifyy"))' 2>/dev/null \
-        || echo '?')"
+[[ -n "$GRAPHIFY" ]] || fail "graphify introuvable dans le PATH après installation (vérifiez ~/.local/bin)."
+VERSION="$(python3 -c 'import importlib.metadata as m; print(m.version("graphifyy"))' 2>/dev/null || echo '?')"
 ok "graphify $VERSION : $GRAPHIFY"
 
 # ============================================================================
-# 7. Installation du skill dans ~/.claude/skills/graphify
+# 6. Installation du skill dans ~/.claude/skills/graphify
 # ============================================================================
 step "Installation du skill Claude Code"
 "$GRAPHIFY" install --platform claude || fail "graphify install a échoué."
@@ -185,31 +188,34 @@ else
 fi
 
 # ============================================================================
-# 8. Détection de Claude (app de bureau et CLI)
-#    - installation automatique de Claude Code s'il est absent
+# 7. Détection de Claude - installation automatique s'il est absent
 # ============================================================================
-step "Recherche de Claude sur le Mac"
-CLAUDE_APP=""
-for candidate in "/Applications/Claude.app" "$HOME/Applications/Claude.app"; do
-    [[ -d "$candidate" ]] && { CLAUDE_APP="$candidate"; break; }
-done
+step "Recherche de Claude sur la machine"
 CLAUDE_CLI="$(command -v claude || true)"
-
-[[ -n "$CLAUDE_APP" ]] && ok "App de bureau Claude : $CLAUDE_APP"
-[[ -n "$CLAUDE_CLI" ]] && ok "CLI Claude Code : $CLAUDE_CLI"
-
-if [[ -z "$CLAUDE_APP" && -z "$CLAUDE_CLI" ]]; then
-    warn "Claude introuvable - installation automatique de Claude Code..."
+if [[ -n "$CLAUDE_CLI" ]]; then
+    ok "CLI Claude Code : $CLAUDE_CLI"
+else
+    warn "Claude Code introuvable - installation automatique..."
+    # curl est nécessaire pour l'installeur officiel
+    if ! command -v curl >/dev/null 2>&1 && [[ -n "$PKG_INSTALL" ]]; then
+        $PKG_INSTALL curl || true
+    fi
     # Installeur officiel Claude Code (installe dans ~/.local/bin)
-    curl -fsSL https://claude.ai/install.sh | bash || true
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL https://claude.ai/install.sh | bash || true
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO- https://claude.ai/install.sh | bash || true
+    fi
     hash -r 2>/dev/null || true
-    export PATH="$HOME/.local/bin:$PATH"
     CLAUDE_CLI="$(command -v claude || true)"
-    [[ -z "$CLAUDE_CLI" && -x "$HOME/.local/bin/claude" ]] && CLAUDE_CLI="$HOME/.local/bin/claude"
+    if [[ -z "$CLAUDE_CLI" && -x "$HOME/.local/bin/claude" ]]; then
+        CLAUDE_CLI="$HOME/.local/bin/claude"
+    fi
     # Repli npm si l'installeur officiel a échoué
     if [[ -z "$CLAUDE_CLI" ]] && command -v npm >/dev/null 2>&1; then
         warn "Installeur officiel indisponible - tentative via npm..."
-        npm install -g @anthropic-ai/claude-code 2>/dev/null || true
+        npm install -g @anthropic-ai/claude-code 2>/dev/null \
+            || $SUDO npm install -g @anthropic-ai/claude-code || true
         hash -r 2>/dev/null || true
         CLAUDE_CLI="$(command -v claude || true)"
     fi
@@ -218,36 +224,65 @@ if [[ -z "$CLAUDE_APP" && -z "$CLAUDE_CLI" ]]; then
     else
         warn "Installation de Claude échouée - installez-le manuellement :"
         warn "  curl -fsSL https://claude.ai/install.sh | bash"
-        warn "  (ou l'app de bureau : brew install --cask claude)"
         warn "Le skill est prêt et sera détecté au premier lancement."
     fi
 fi
 
 # ============================================================================
-# 9. Liaison automatique de graphify au projet
-#    (section CLAUDE.md + hook PreToolUse : graphify devient always-on)
+# 7b. Autres assistants IA supportés (informatif - la liaison est posée
+#     quoi qu'il en soit à l'étape suivante, prête à l'emploi)
+# ============================================================================
+if command -v gemini >/dev/null 2>&1; then
+    ok "Gemini CLI : $(command -v gemini)"
+else
+    warn "Gemini CLI absent (npm install -g @google/gemini-cli) - la liaison sera prête pour plus tard."
+fi
+if command -v antigravity >/dev/null 2>&1; then
+    ok "Google Antigravity : $(command -v antigravity)"
+else
+    warn "Antigravity absent (https://antigravity.google) - la liaison sera prête pour plus tard."
+fi
+
+# ============================================================================
+# 8. Liaison automatique de graphify au projet, pour les trois assistants
+#    (Claude : CLAUDE.md + hook / Gemini : GEMINI.md + hook / Antigravity : .agents/)
 # ============================================================================
 step "Liaison de graphify au projet ($PROJECT_PATH)"
 ( cd "$PROJECT_PATH" && "$GRAPHIFY" claude install ) \
-    && ok "Projet lié : CLAUDE.md + hook installés (graphify always-on)" \
-    || warn "Liaison échouée - relancez 'graphify claude install' dans le projet."
+    && ok "Claude Code lié : CLAUDE.md + hook installés (graphify always-on)" \
+    || warn "Liaison Claude échouée - relancez 'graphify claude install' dans le projet."
+( cd "$PROJECT_PATH" && "$GRAPHIFY" gemini install ) \
+    && ok "Gemini CLI lié : GEMINI.md + hook BeforeTool installés" \
+    || warn "Liaison Gemini échouée (non bloquant)."
+( cd "$PROJECT_PATH" && "$GRAPHIFY" antigravity install ) \
+    && ok "Antigravity lié : .agents/ (règles + workflows + skill) installés" \
+    || warn "Liaison Antigravity échouée (non bloquant)."
 
 # ============================================================================
-# 10. Construction de la carte du graphe (sans LLM) et ouverture
+# 9. Construction de la carte du graphe (sans LLM) et ouverture
 # ============================================================================
 step "Construction de la carte du graphe"
 "$GRAPHIFY" update "$PROJECT_PATH" || true
 GRAPH_HTML="$PROJECT_PATH/graphify-out/graph.html"
 
+open_in_browser() {
+    if command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "$1" >/dev/null 2>&1 &
+        return 0
+    fi
+    return 1
+}
+
 if [[ -f "$GRAPH_HTML" ]]; then
     ok "Carte générée : $GRAPH_HTML"
-    open "$GRAPH_HTML" && ok "Carte ouverte dans le navigateur"
+    open_in_browser "$GRAPH_HTML" && ok "Carte ouverte dans le navigateur" \
+        || warn "xdg-open indisponible - ouvrez manuellement : $GRAPH_HTML"
 else
     warn "Pas de carte générée (dossier sans fichiers de code ?). Lancez /graphify dans Claude pour une extraction complète (code + docs + images)."
 fi
 
 # ============================================================================
-# 10b. Guide d'utilisation : seconde page ouverte à côté de la carte
+# 9b. Guide d'utilisation : seconde page ouverte à côté de la carte
 # ============================================================================
 step "Génération du guide d'utilisation graphify"
 GUIDE_DIR="$PROJECT_PATH/graphify-out"
@@ -423,33 +458,42 @@ cat > "$GUIDE_PATH" <<'GUIDE_EOF'
   </ul>
 </section>
 
-<footer>graphify — g&eacute;n&eacute;r&eacute; automatiquement par install-graphify-macos.sh &middot; tapez <code>/graphify --help</code> dans Claude pour la liste compl&egrave;te</footer>
+<footer>graphify — g&eacute;n&eacute;r&eacute; automatiquement par install-graphify.sh &middot; tapez <code>/graphify --help</code> dans Claude pour la liste compl&egrave;te</footer>
 </div>
 </body>
 </html>
 GUIDE_EOF
 ok "Guide généré : $GUIDE_PATH"
-open "$GUIDE_PATH" && ok "Guide ouvert dans le navigateur (seconde page, à côté de la carte)" \
+open_in_browser "$GUIDE_PATH" && ok "Guide ouvert dans le navigateur (seconde page, à côté de la carte)" \
     || warn "Ouvrez manuellement : $GUIDE_PATH"
 
 # ============================================================================
-# 11. Lancement de Claude
+# 10. Lancement de Claude Code dans un nouveau terminal
 # ============================================================================
 step "Lancement de Claude"
-if [[ -n "$CLAUDE_APP" ]]; then
-    open -a "$CLAUDE_APP" && ok "Application Claude lancée"
-elif [[ -n "$CLAUDE_CLI" ]]; then
-    # Ouvre un nouveau Terminal dans le projet et y lance le CLI (chemin absolu)
-    osascript >/dev/null 2>&1 <<OSA
-tell application "Terminal"
-    do script "cd '$PROJECT_PATH' && '$CLAUDE_CLI'"
-    activate
-end tell
-OSA
-    if [[ $? -eq 0 ]]; then
-        ok "Claude Code lancé dans un nouveau Terminal"
+if [[ -n "$CLAUDE_CLI" ]]; then
+    launched=""
+    # Chemin absolu du CLI : fiable même juste après une installation fraîche
+    CLAUDE_CMD="\"$CLAUDE_CLI\"; exec bash"
+    if command -v gnome-terminal >/dev/null 2>&1; then
+        gnome-terminal --working-directory="$PROJECT_PATH" -- bash -lc "$CLAUDE_CMD" >/dev/null 2>&1 && launched=1
+    elif command -v konsole >/dev/null 2>&1; then
+        konsole --workdir "$PROJECT_PATH" -e bash -lc "$CLAUDE_CMD" >/dev/null 2>&1 & launched=1
+    elif command -v xfce4-terminal >/dev/null 2>&1; then
+        xfce4-terminal --working-directory="$PROJECT_PATH" -e "bash -lc '$CLAUDE_CMD'" >/dev/null 2>&1 & launched=1
+    elif command -v kitty >/dev/null 2>&1; then
+        kitty --directory "$PROJECT_PATH" bash -lc "$CLAUDE_CMD" >/dev/null 2>&1 & launched=1
+    elif command -v alacritty >/dev/null 2>&1; then
+        alacritty --working-directory "$PROJECT_PATH" -e bash -lc "$CLAUDE_CMD" >/dev/null 2>&1 & launched=1
+    elif command -v x-terminal-emulator >/dev/null 2>&1; then
+        ( cd "$PROJECT_PATH" && x-terminal-emulator -e bash -lc "$CLAUDE_CMD" ) >/dev/null 2>&1 & launched=1
+    elif command -v xterm >/dev/null 2>&1; then
+        ( cd "$PROJECT_PATH" && xterm -e bash -lc "$CLAUDE_CMD" ) >/dev/null 2>&1 & launched=1
+    fi
+    if [[ -n "$launched" ]]; then
+        ok "Claude Code lancé dans un nouveau terminal"
     else
-        warn "Impossible d'ouvrir le Terminal - lancez simplement :  cd '$PROJECT_PATH' && claude"
+        warn "Aucun terminal graphique reconnu - lancez simplement :  cd '$PROJECT_PATH' && claude"
     fi
 else
     warn "Claude non installé - étape ignorée."
