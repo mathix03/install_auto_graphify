@@ -7,8 +7,10 @@
 #   - Installe le package pip "graphifyy" (le vrai nom du package graphify sur PyPI)
 #   - Copie le skill dans ~/.claude/skills/graphify via "graphify install --platform claude"
 #   - Trouve Claude (CLI) - et installe Claude Code automatiquement s'il est
-#     absent (installeur officiel, repli npm) - puis lie graphify au projet
-#     (CLAUDE.md + hook)
+#     absent (installeur officiel, repli npm)
+#   - Lie graphify au projet pour TROIS assistants IA :
+#     Claude Code (CLAUDE.md + hook), Gemini CLI (GEMINI.md + hook BeforeTool)
+#     et Google Antigravity (.agents/ : règles + workflows + skill)
 #   - Construit la carte du graphe (sans LLM) et l'ouvre dans le navigateur
 #   - Génère et ouvre un guide d'utilisation complet (graphify-out/guide-graphify.html)
 #   - Lance Claude Code dans un nouveau terminal
@@ -227,13 +229,34 @@ else
 fi
 
 # ============================================================================
-# 8. Liaison automatique de graphify au projet
-#    (section CLAUDE.md + hook PreToolUse : graphify devient always-on)
+# 7b. Autres assistants IA supportés (informatif - la liaison est posée
+#     quoi qu'il en soit à l'étape suivante, prête à l'emploi)
+# ============================================================================
+if command -v gemini >/dev/null 2>&1; then
+    ok "Gemini CLI : $(command -v gemini)"
+else
+    warn "Gemini CLI absent (npm install -g @google/gemini-cli) - la liaison sera prête pour plus tard."
+fi
+if command -v antigravity >/dev/null 2>&1; then
+    ok "Google Antigravity : $(command -v antigravity)"
+else
+    warn "Antigravity absent (https://antigravity.google) - la liaison sera prête pour plus tard."
+fi
+
+# ============================================================================
+# 8. Liaison automatique de graphify au projet, pour les trois assistants
+#    (Claude : CLAUDE.md + hook / Gemini : GEMINI.md + hook / Antigravity : .agents/)
 # ============================================================================
 step "Liaison de graphify au projet ($PROJECT_PATH)"
 ( cd "$PROJECT_PATH" && "$GRAPHIFY" claude install ) \
-    && ok "Projet lié : CLAUDE.md + hook installés (graphify always-on)" \
-    || warn "Liaison échouée - relancez 'graphify claude install' dans le projet."
+    && ok "Claude Code lié : CLAUDE.md + hook installés (graphify always-on)" \
+    || warn "Liaison Claude échouée - relancez 'graphify claude install' dans le projet."
+( cd "$PROJECT_PATH" && "$GRAPHIFY" gemini install ) \
+    && ok "Gemini CLI lié : GEMINI.md + hook BeforeTool installés" \
+    || warn "Liaison Gemini échouée (non bloquant)."
+( cd "$PROJECT_PATH" && "$GRAPHIFY" antigravity install ) \
+    && ok "Antigravity lié : .agents/ (règles + workflows + skill) installés" \
+    || warn "Liaison Antigravity échouée (non bloquant)."
 
 # ============================================================================
 # 9. Construction de la carte du graphe (sans LLM) et ouverture
