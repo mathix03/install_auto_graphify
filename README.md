@@ -8,10 +8,10 @@ One-click installer that turns any codebase into an **interactive knowledge grap
 
 Drop the script into a project folder, run it, and seconds later you have: a queryable graph of your code open in your browser, a full user guide next to it, Claude launched and permanently linked to the graph.
 
-<!-- Screenshot: add assets/graph-map.png and uncomment -->
-<!-- ![Interactive graph map](assets/graph-map.png) -->
-
----
+<img width="3412" height="1916" alt="Capture d&#39;écran 2026-07-06 200744" src="https://github.com/user-attachments/assets/38c03f0b-4973-4864-82d6-0b778a6273f7" />
+<img width="1307" height="1482" alt="Capture d&#39;écran 2026-07-06 200848" src="https://github.com/user-attachments/assets/cb4c9c65-4be7-4a67-afdf-e016c1501d7c" />
+<img width="1165" height="1424" alt="Capture d&#39;écran 2026-07-06 200910" src="https://github.com/user-attachments/assets/2b123aea-bb3c-4284-a546-b047086a4ae9" />
+<img width="1202" height="1050" alt="Capture d&#39;écran 2026-07-06 200926" src="https://github.com/user-attachments/assets/3e2c12ba-16e1-4b66-970c-d11b3c249375" />
 
 ## What it does
 
