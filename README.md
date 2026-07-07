@@ -1,44 +1,103 @@
 # graphify Auto-Installer
 
-One-click PowerShell installer that turns any codebase into an interactive knowledge graph and wires it straight into Claude Code — zero manual steps, zero questions asked.
+![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D6?logo=windows&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-apt%20·%20dnf%20·%20pacman%20·%20zypper%20·%20apk-FCC624?logo=linux&logoColor=black)
+![macOS](https://img.shields.io/badge/macOS-Intel%20%26%20Apple%20Silicon-000000?logo=apple&logoColor=white)
 
-<img width="3412" height="1916" alt="Capture d'écran 2026-07-06 200744" src="https://github.com/user-attachments/assets/121f2ac6-76fd-4396-a060-339fc08eec53" />
+One-click installer that turns any codebase into an **interactive knowledge graph** and wires it straight into **Claude Code** — zero manual steps, zero questions asked.
+
+Drop the script into a project folder, run it, and seconds later you have: a queryable graph of your code open in your browser, a full user guide next to it, Claude launched and permanently linked to the graph.
+
+<!-- Screenshot: add assets/graph-map.png and uncomment -->
+<!-- ![Interactive graph map](assets/graph-map.png) -->
+
+---
 
 ## What it does
 
-Run the script once and it automatically:
+Every version runs the same fully automatic pipeline:
 
-1. **Elevates itself to administrator** (single UAC click — the only interaction needed)
-2. **Installs Python 3.11** if missing (via winget, with a python.org fallback)
-3. **Installs the graphify engine** (`graphifyy` pip package) and its Claude Code skill
-4. **Finds Claude on your PC** (desktop app and/or CLI) and **links graphify to your project** — a `CLAUDE.md` section plus a hook make the knowledge graph *always-on*: Claude consults it before answering any codebase question
-5. **Builds the interactive map** of your code — nodes are functions, classes and concepts; colors are auto-detected communities; the biggest nodes are the central "god nodes"
-6. **Opens two pages in your browser**: the graph map (`graph.html`) and a complete user guide (`guide-graphify.html`)
-7. **Launches the Claude app**
+1. **Elevates privileges** — UAC prompt on Windows, single `sudo` password on Linux/macOS (used only for system packages; everything else installs in your user profile)
+2. **Installs Python 3** if missing — winget/python.org (Windows), native package manager (Linux), Homebrew (macOS)
+3. **Installs the graphify engine** — the [`graphifyy`](https://pypi.org/project/graphifyy/) pip package — and its Claude Code skill (`~/.claude/skills/graphify`)
+4. **Finds Claude** (desktop app and/or CLI) — and **installs Claude Code automatically if missing** (official installer, npm fallback)
+5. **Links graphify to your project** — writes a `CLAUDE.md` section + a PreToolUse hook, so Claude consults the knowledge graph before answering any codebase question, in every future session
+6. **Builds the interactive map** — AST extraction, no LLM, no API cost — and opens it in your browser **together with a complete usage guide** (`guide-graphify.html`)
+7. **Launches Claude** — the desktop app, or the CLI in a new terminal opened in your project
+
+---
 
 ## Quick start
 
-Method 1: The One-Liner (Recommended)**
-Open PowerShell as administrator and run this single command to download and execute the installer:
+### Windows (10/11)
+
+Download [`install-graphify.ps1`](install-graphify.ps1) into your project folder, then right-click → **Run with PowerShell**, or:
 
 ```powershell
-irm [https://raw.githubusercontent.com/mathix03/install_auto_graphify/main/install-graphify.ps1](https://raw.githubusercontent.com/mathix03/install_auto_graphify/main/install-graphify.ps1) -OutFile install-graphify.ps1; powershell -ExecutionPolicy Bypass -File .\install-graphify.ps1
-```
-**Method 2: Manual Download
-
-Drop `install-graphify.ps1` into your project folder, then:
-
-```powershell
+irm https://raw.githubusercontent.com/mathix03/install_auto_graphify/main/install-graphify.ps1 -OutFile install-graphify.ps1
 powershell -ExecutionPolicy Bypass -File .\install-graphify.ps1
 ```
 
-<img width="2943" height="1946" alt="Capture d&#39;écran 2026-07-06 200628" src="https://github.com/user-attachments/assets/33cbd178-2bec-4d24-978f-66ef3d833c81" />
-
-Or right-click the script → **Run with PowerShell**. To target another folder without moving the script:
+Target another folder without moving the script:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-graphify.ps1 -ProjectPath "C:\path\to\project"
 ```
+
+### GNU/Linux
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/mathix03/install_auto_graphify/main/install-graphify.sh
+chmod +x install-graphify.sh
+./install-graphify.sh                # project = the script's folder
+./install-graphify.sh ~/my/project   # or an explicit path
+```
+
+Works on Debian/Ubuntu, Fedora/RHEL, Arch, openSUSE and Alpine (apt, dnf/yum, pacman, zypper, apk).
+
+### macOS (Intel & Apple Silicon)
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/mathix03/install_auto_graphify/main/install-graphify-macos.sh
+chmod +x install-graphify-macos.sh
+./install-graphify-macos.sh                # project = the script's folder
+./install-graphify-macos.sh ~/my/project   # or an explicit path
+```
+
+Installs Homebrew automatically if it is needed and missing. Compatible with the stock bash 3.2 shipped with macOS.
+
+---
+
+## Example run
+
+What a successful installation looks like on each platform (click to expand):
+
+<details>
+<summary><strong>Windows</strong></summary>
+
+<img width="2943" height="1946" alt="Capture d&#39;écran 2026-07-06 200628" src="https://github.com/user-attachments/assets/8fb0f9b5-98f1-4cb1-bda7-bb3e99c991d1" />
+
+</details>
+
+<details>
+<summary><strong>GNU/Linux</strong></summary>
+
+<img width="1832" height="1200" alt="Capture d&#39;écran 2026-07-07 115359" src="https://github.com/user-attachments/assets/74091f3f-83a9-4c3f-b7d5-ef7cbd30d735" />
+<img width="2471" height="1760" alt="Capture d&#39;écran 2026-07-07 115422" src="https://github.com/user-attachments/assets/90b0bedc-d045-4228-9734-263b943b0e21" />
+
+</details>
+
+<details>
+<summary><strong>macOS</strong></summary>
+
+<img width="1680" height="900" alt="Capture d’écran 2026-07-07 à 14 16 45" src="https://github.com/user-attachments/assets/a5f64911-fc6a-4a3e-9c04-eab90a017db1" />
+<img width="1680" height="879" alt="Capture d’écran 2026-07-07 à 14 17 11" src="https://github.com/user-attachments/assets/f7dbcdf2-d7aa-49ce-9db8-ccead1bf389d" />
+<img width="1680" height="1050" alt="Capture d’écran 2026-07-07 à 14 17 40" src="https://github.com/user-attachments/assets/850b30c2-426b-400e-b139-82a948595dba" />
+<img width="1680" height="614" alt="Capture d’écran 2026-07-07 à 14 18 21" src="https://github.com/user-attachments/assets/14da7ef7-6730-4a8a-a0f2-7d5143da0f87" />
+
+</details>
+
+---
 
 ## What you get
 
@@ -53,37 +112,66 @@ your-project/
     └── GRAPH_REPORT.md            # plain-language report with an honest audit trail
 ```
 
-The initial map covers your **code** (AST extraction, no LLM, no API cost). Type `/graphify` inside Claude to enrich it with docs, PDFs, images, videos and semantic links.
+On the map: **colors** are auto-detected communities (click the legend to filter), the **biggest nodes** are the central "god nodes", and the search bar finds any node instantly.
 
-### The Included Guide
-The installer also generates a comprehensive local guide to help you master Graphify:
+The initial map covers your **code** (AST extraction — instant and free). Type `/graphify` inside Claude to enrich it with docs, PDFs, images, videos and semantic links.
 
-<img width="1307" height="1482" alt="Capture d&#39;écran 2026-07-06 200848" src="https://github.com/user-attachments/assets/04a88729-44b6-4417-a045-c436799fd698" />
-<img width="1165" height="1424" alt="Capture d&#39;écran 2026-07-06 200910" src="https://github.com/user-attachments/assets/71ab8560-25e7-4800-b561-33d03e723189" />
-<img width="1202" height="1050" alt="Capture d&#39;écran 2026-07-06 200926" src="https://github.com/user-attachments/assets/3cc102be-1094-4ab0-ae7f-db6289421963" />
+---
 
-## Credits
-This project is an automated installer for the excellent **graphify** engine developed by [safishamsi](https://github.com/safishamsi/graphify). Make sure to check out the original repository to support their work!
+## Platform differences
 
-## 🔒 Security & Transparency
+| | Windows | GNU/Linux | macOS |
+|---|---|---|---|
+| Privilege model | UAC self-elevation | one `sudo` prompt (system packages only) | one `sudo` prompt (Homebrew only) |
+| Python source | winget / python.org | apt · dnf · pacman · zypper · apk | Homebrew |
+| Claude detected | desktop app + CLI | CLI | desktop app (`/Applications/Claude.app`) + CLI |
+| Claude auto-install | `claude.ai/install.ps1`, npm fallback | `claude.ai/install.sh`, npm fallback | `claude.ai/install.sh`, npm fallback |
+| Opens map & guide | default browser (unelevated) | `xdg-open` | `open` |
+| Launches Claude | app, or CLI in PowerShell window | CLI in gnome-terminal/konsole/kitty/… | app, or CLI in Terminal.app |
 
-Since this script requests **Administrator privileges (UAC elevation)** to configure the environment, here is a transparent list of exactly what it accesses and modifies on your machine:
+All three scripts are re-runnable: running them again simply updates everything.
 
-* **System & Python:** Checks if Python 3.11+ is installed. If missing, it invokes Windows `winget` (or the official python.org installer) to deploy it.
-* **Python Packages:** Installs the official `graphifyy` engine globally or locally via `pip install`.
-* **Claude Code Integration:** Creates and registers the custom graphify skill inside your global user profile folder (`~\.claude\skills\`).
-* **Project Directory:** Modifies *only* the specific project folder where it is executed by appending automated context instructions to `CLAUDE.md` and registering git/tool hooks inside `.claude/settings.json`.
+### Robust pip install (Linux & macOS)
 
-> **Note:** The script explicitly drops administrator rights before launching your default web browser and the Claude app to maintain system safety.
+The `graphifyy` package is installed through a fallback ladder that survives old system Pythons and PEP 668 "externally managed" environments:
+
+1. `pipx` if present
+2. `pip install --user` (errors shown, pip upgraded first)
+3. `--break-system-packages` retry — only when the error is PEP 668 *and* pip supports the flag
+4. Last resort: a recent Python (Homebrew on macOS) + a dedicated virtualenv at `~/.graphify/venv`, with the `graphify` binary linked into `~/.local/bin`
+
+---
+
+## Security & transparency
+
+This installer asks for admin rights, so here is exactly what it touches:
+
+- **With elevation**: system package installs only (Python, and on Windows the optional winget install). The browser and Claude are deliberately launched **without** admin rights.
+- **In your user profile**: the `graphifyy` pip package, the skill folder `~/.claude/skills/graphify`, and — in the target project only — a `## graphify` section in `CLAUDE.md` plus hooks in `.claude/settings.json`.
+- **Downloads**: python.org (Windows fallback), the official Claude Code installer (`claude.ai/install.ps1` / `install.sh`), Homebrew's official installer (macOS, only if needed), and PyPI.
+- Nothing is sent anywhere; the initial graph build is pure local AST extraction (no LLM, no API key).
+
+> **Note the package name**: the official PyPI name of graphify is **`graphifyy`** (double *y*). Do not install `graphify` (single *y*) — that is a different, unrelated package.
+
+## Uninstall
+
+```bash
+graphify uninstall          # removes graphify from all detected platforms
+graphify uninstall --purge  # also deletes graphify-out/
+graphify claude uninstall   # per-project: removes the CLAUDE.md section + hook
+pip uninstall graphifyy     # (or: pipx uninstall graphifyy)
+```
 
 ## Requirements
 
-- Windows 10/11 with PowerShell 5.1+
-- Administrator rights (the script requests them itself)
-- Internet connection (pip / winget downloads)
+- **Windows**: Windows 10/11, PowerShell 5.1+, admin rights, internet
+- **Linux**: any distro with apt/dnf/yum/pacman/zypper/apk, bash, sudo, internet
+- **macOS**: macOS 12+, internet (Homebrew is installed automatically if needed)
 
-## Notes
+## Credits
 
-- The pip package is **`graphifyy`** (double *y*) — that is the official PyPI name of graphify. Do not install `graphify` (single *y*), it is a different package.
-- The browser and Claude are deliberately launched **without** admin rights; only the installation itself is elevated.
-- The graph is persistent across sessions: build once, query forever. Keep it fresh with `graphify update .` (instant, no LLM) or `graphify hook install` (auto-rebuild on every git commit).
+This project is an installer for [**graphify**](https://github.com/safishamsi/graphify) by Safi Shamsi (MIT License) — all the knowledge-graph magic is his work. This repo just makes getting it running with Claude Code a one-click affair.
+
+## License
+
+MIT
